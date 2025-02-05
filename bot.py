@@ -25,8 +25,6 @@ def get_exchange_rates():
         
         if not data or 'rates' not in data:
             raise ValueError("Некорректный ответ API")
-        /A"
-
 async def update_pinned_message():
     while True:
         usd_kzt, eur_kzt = get_exchange_rates()
