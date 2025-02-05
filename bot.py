@@ -5,59 +5,65 @@ import requests
 from telegram import Bot
 from dotenv import load_dotenv
 
+# Загружаем переменные окружения
 load_dotenv()
 
-TELEGRAM_TOKEN = "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # Вставь свой токен вручную
-CHAT_IDS = os.getenv("CHAT_IDS").split(',')  # Список ID чатов через запятую
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_IDS = os.getenv("CHAT_IDS", "").split(",")  # Список ID чатов
 API_URL = "https://api.exchangerate-api.com/v4/latest/USD"
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-print(f"TELEGRAM_TOKEN из .env: {TELEGRAM_TOKEN}")
+
+# Проверяем токен перед запуском
+if not TELEGRAM_TOKEN:
+    raise ValueError("TELEGRAM_TOKEN не найден! Проверьте переменные окружения.")
+
 bot = Bot(token=TELEGRAM_TOKEN)
+
 def get_exchange_rates():
-    """ Получает курсы валют и возвращает USD/KZT и EUR/KZT """
+    """Получает текущие курсы валют USD/KZT и EUR/KZT"""
     try:
         response = requests.get(API_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
-        logger.info(f"API Response: {data}")  # Логируем ответ API
-        
-        if not data or 'rates' not in data:
+
+        if "rates" not in data:
             raise ValueError("Некорректный ответ API")
-        
-        usd_kzt = data['rates'].get('KZT', 'N/A')
-        eur_kzt = data['rates'].get('EUR', 'N/A')
+
+        usd_kzt = data["rates"].get("KZT", "N/A")
+        eur_kzt = data["rates"].get("EUR", "N/A")
         return usd_kzt, eur_kzt
-    
+
     except Exception as e:
         logger.error(f"Ошибка при получении курсов валют: {e}")
         return "N/A", "N/A"
 
 async def update_pinned_message():
-    """ Обновляет закрепленное сообщение с актуальными курсами валют """
+    """Обновляет закрепленное сообщение с актуальными курсами"""
     while True:
         usd_kzt, eur_kzt = get_exchange_rates()
-        message_text = f"Актуальные курсы:\nUSD/KZT: {usd_kzt}\nEUR/KZT: {eur_kzt}"
-        
+        message_text = f"💰 Актуальные курсы:\n🇺🇸 USD/KZT: {usd_kzt}\n🇪🇺 EUR/KZT: {eur_kzt}"
+
         for chat_id in CHAT_IDS:
             try:
                 chat = await bot.get_chat(chat_id)
                 pinned_msg = chat.pinned_message
-                
+
                 if pinned_msg:
                     await bot.edit_message_text(chat_id=chat_id, message_id=pinned_msg.message_id, text=message_text)
                 else:
                     sent_msg = await bot.send_message(chat_id=chat_id, text=message_text)
                     await bot.pin_chat_message(chat_id=chat_id, message_id=sent_msg.message_id)
-                
+
                 logger.info(f"Сообщение обновлено в чате {chat_id}")
             except Exception as e:
                 logger.error(f"Ошибка при обновлении сообщения в {chat_id}: {e}")
-        
+
         await asyncio.sleep(600)  # Обновление каждые 10 минут
 
 async def main():
-    logger.info("Бот запускается...")
+    logger.info("Бот запущен!")
     await update_pinned_message()
 
 if __name__ == "__main__":
