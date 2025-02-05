@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 # Загружаем переменные окружения
 load_dotenv()
 
-TOKEN = os.getenv("BOT_TOKEN")
-API_KEY = os.getenv("EXCHANGE_API_KEY")
+TOKEN = os.getenv("8034613028:AAFbmNg73gbhRIXpSlzGLG1rgMk29i8c0Ws")
+API_KEY = os.getenv(" 80312c8d3cb3d0a7add04a6a")
 CHAT_IDS = [-1002174956701, -1002291124169]
 
 if not TOKEN or not API_KEY:
