@@ -1,3 +1,18 @@
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/')  # <-- добавляем корневой маршрут
+def home():
+    return "Bot is running!", 200
+
+@app.route('/webhook', methods=['POST'])  # <-- этот маршрут нужен для Telegram
+def webhook():
+    return {"ok": True}, 200  # тестовый ответ
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
+
 import os
 import logging
 import asyncio
