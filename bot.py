@@ -69,23 +69,35 @@ def update_pinned_message():
     if not rates:
         logger.error("Не удалось получить курсы, сообщение не обновлено.")
         return
-    
-    text = (
-        f"💱 *Актуальные курсы валют и криптовалют*:\n\n"
-        f"🇺🇸 1 USD = {rates['USD/KZT']:.2f} KZT\n"
-        f"🇪🇺 1 EUR = {rates['EUR/KZT']:.2f} KZT\n"
-        f"₿ 1 BTC = {rates['BTC/USD']:.2f} USD\n"
-        f"⛏ 1 ETH = {rates['ETH/USD']:.2f} USD\n"
-    )
+
+    text = "💱 *Актуальные курсы валют и криптовалют*:\n\n"
+
+    if rates["USD/KZT"] is not None:
+        text += f"🇺🇸 1 USD = {rates['USD/KZT']:.2f} KZT\n"
+    else:
+        text += "🇺🇸 1 USD = ❌ (нет данных)\n"
+
+    if rates["EUR/KZT"] is not None:
+        text += f"🇪🇺 1 EUR = {rates['EUR/KZT']:.2f} KZT\n"
+    else:
+        text += "🇪🇺 1 EUR = ❌ (нет данных)\n"
+
+    if rates["BTC/USD"] is not None:
+        text += f"₿ 1 BTC = {rates['BTC/USD']:.2f} USD\n"
+    else:
+        text += "₿ 1 BTC = ❌ (нет данных)\n"
+
+    if rates["ETH/USD"] is not None:
+        text += f"⛏ 1 ETH = {rates['ETH/USD']:.2f} USD\n"
+    else:
+        text += "⛏ 1 ETH = ❌ (нет данных)\n"
 
     for chat_id in CHAT_IDS:
         try:
-            # Получаем закреплённое сообщение
             chat = bot.get_chat(chat_id)
             pinned_message = chat.pinned_message
 
             if pinned_message:
-                # Редактируем существующее закреплённое сообщение
                 bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=pinned_message.message_id,
@@ -94,7 +106,6 @@ def update_pinned_message():
                 )
                 logger.info(f"Сообщение в чате {chat_id} обновлено.")
             else:
-                # Отправляем новое сообщение и закрепляем его
                 sent_message = bot.send_message(
                     chat_id=chat_id,
                     text=text,
