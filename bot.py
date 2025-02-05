@@ -13,8 +13,8 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_IDS = os.getenv("CHAT_IDS", "").split(",")
-EXCHANGE_API_URL = "https://api.exchangerate-api.com/v4/latest/USD"
-CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,binancecoin&vs_currencies=usd"
+EXCHANGE_API_URL = "https://open.er-api.com/v6/latest/USD"
+CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,binancecoin,ripple,cardano,solana,polkadot,tron,usd-coin&vs_currencies=usd"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,17 +22,18 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 app = Flask(__name__)
 
-def get_exchange_rates():
-    """Получает курсы мировых валют."""
+async def get_exchange_rates():
+    """Получает курсы всех мировых валют."""
     try:
         response = requests.get(EXCHANGE_API_URL, timeout=10)
         response.raise_for_status()
-        return response.json().get("rates", {})
+        data = response.json()
+        return data["rates"]
     except Exception as e:
         logger.error(f"Ошибка при получении курсов валют: {e}")
         return {}
 
-def get_crypto_prices():
+async def get_crypto_prices():
     """Получает цены основных криптовалют."""
     try:
         response = requests.get(CRYPTO_API_URL, timeout=10)
@@ -45,21 +46,30 @@ def get_crypto_prices():
 async def update_pinned_message():
     """Обновляет закрепленное сообщение с актуальными курсами."""
     while True:
-        rates = get_exchange_rates()
-        crypto = get_crypto_prices()
+        rates = await get_exchange_rates()
+        crypto = await get_crypto_prices()
 
-        usd_kzt = rates.get("KZT", "N/A")
-        eur_usd = rates.get("EUR", "N/A")
-        eur_kzt = usd_kzt * eur_usd if isinstance(usd_kzt, (int, float)) and isinstance(eur_usd, (int, float)) else "N/A"
+        if not rates:
+            logger.error("Не удалось получить курсы валют")
+            await asyncio.sleep(600)
+            continue
 
-        message_text = (
-            f"💰 Актуальные курсы:\n"
-            f"🇺🇸 USD/KZT: {usd_kzt}\n"
-            f"🇪🇺 EUR/KZT: {eur_kzt}\n"
-            f"₿ BTC/USD: {crypto.get('bitcoin', {}).get('usd', 'N/A')}\n"
-            f"Ξ ETH/USD: {crypto.get('ethereum', {}).get('usd', 'N/A')}\n"
-            f"🪙 USDT/USD: {crypto.get('tether', {}).get('usd', 'N/A')}\n"
-        )
+        if not crypto:
+            logger.error("Не удалось получить данные о криптовалютах")
+            await asyncio.sleep(600)
+            continue
+
+        message_text = "💰 Актуальные курсы:\n"
+        message_text += f"🇺🇸 USD/KZT: {rates.get('KZT', 'N/A')}\n"
+        message_text += f"🇪🇺 EUR/KZT: {rates.get('KZT', 1) * rates.get('EUR', 1):.2f}\n"
+        message_text += f"₿ BTC/USD: {crypto.get('bitcoin', {}).get('usd', 'N/A')}\n"
+        message_text += f"Ξ ETH/USD: {crypto.get('ethereum', {}).get('usd', 'N/A')}\n"
+        message_text += f"🪙 USDT/USD: {crypto.get('tether', {}).get('usd', 'N/A')}\n"
+        message_text += f"🔷 BNB/USD: {crypto.get('binancecoin', {}).get('usd', 'N/A')}\n"
+        message_text += f"🔶 ADA/USD: {crypto.get('cardano', {}).get('usd', 'N/A')}\n"
+        message_text += f"🌀 SOL/USD: {crypto.get('solana', {}).get('usd', 'N/A')}\n"
+        message_text += f"🎯 DOT/USD: {crypto.get('polkadot', {}).get('usd', 'N/A')}\n"
+        message_text += f"📀 TRX/USD: {crypto.get('tron', {}).get('usd', 'N/A')}\n"
 
         for chat_id in CHAT_IDS:
             try:
@@ -83,20 +93,30 @@ async def start(update: Update, context: CallbackContext):
     await update.message.reply_text("Привет! Я бот для отслеживания курсов валют и криптовалют.")
 
 async def main():
+    """Главная асинхронная функция"""
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
-    threading.Thread(target=run_flask, daemon=True).start()
     
-    update_task = asyncio.create_task(update_pinned_message())
+    # Запускаем Flask в отдельном потоке
+    threading.Thread(target=run_flask, daemon=True).start()
+
+    # Запускаем обновление сообщений и polling параллельно
+    asyncio.create_task(update_pinned_message())
     await application.run_polling()
-    await update_task
 
 def run_flask():
+    """Запускает Flask сервер"""
     app.run(host="0.0.0.0", port=5000, debug=False)
 
 @app.route('/', methods=['GET'])
 def home():
+    """Простой маршрут для проверки работы"""
     return "Bot is running and ready!", 200
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.get_event_loop().run_until_complete(main())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main())
