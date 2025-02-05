@@ -3,27 +3,30 @@ import time
 import requests
 import logging
 from telegram import Bot
-from dotenv import load_dotenv
 
-# Удаляем load_dotenv(), так как Render загружает переменные автоматически
+# Логирование
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Загружаем переменные окружения
-BOT_TOKEN = os.getenv("8034613028:AAFbmNg73gbhRIXpSlzGLG1rgMk29i8c0Ws")
-API_KEY = os.getenv("80312c8d3cb3d0a7add04a6a")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Токен бота из переменной окружения
+API_KEY = os.getenv("API_KEY")      # API-ключ из переменной окружения
 
 # Проверяем, что переменные загружены
 if not BOT_TOKEN or not API_KEY:
-    raise ValueError("Ошибка: Токен бота или API-ключ не найдены. Проверьте переменные окружения!")
-
-# Логирование
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+    raise ValueError(
+        "Ошибка: Токен бота или API-ключ не найдены. "
+        "Проверьте переменные окружения BOT_TOKEN и API_KEY!"
+    )
 
 # Инициализация бота
 bot = Bot(token=BOT_TOKEN)
 
-# ID чатов (замени на свои)
-CHAT_IDS = ["-1001234567890", "-1009876543210"]  # ID твоих групп
+# ID чатов (замените на свои)
+CHAT_IDS = ["-1002174956701", "-1002291124169"]  # ID ваших групп
 
 # URL API для курсов валют
 EXCHANGE_URL = f"https://v6.exchangerate-api.com/v6/{API_KEY}/latest/USD"
@@ -35,7 +38,7 @@ def get_exchange_rates():
         data = response.json()
         
         if response.status_code != 200 or "conversion_rates" not in data:
-            logger.error(f"Ошибка API: {data}")
+            logger.error(f"Ошибка API: {data}. Статус код: {response.status_code}")
             return None
 
         rates = data["conversion_rates"]
@@ -77,16 +80,39 @@ def update_pinned_message():
 
     for chat_id in CHAT_IDS:
         try:
-            messages = bot.get_chat(chat_id).pinned_message
-            if messages:
-                bot.edit_message_text(chat_id=chat_id, message_id=messages.message_id, text=text, parse_mode="Markdown")
+            # Получаем закреплённое сообщение
+            chat = bot.get_chat(chat_id)
+            pinned_message = chat.pinned_message
+
+            if pinned_message:
+                # Редактируем существующее закреплённое сообщение
+                bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=pinned_message.message_id,
+                    text=text,
+                    parse_mode="Markdown",
+                )
+                logger.info(f"Сообщение в чате {chat_id} обновлено.")
             else:
-                sent_message = bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
-                bot.pin_chat_message(chat_id=chat_id, message_id=sent_message.message_id)
+                # Отправляем новое сообщение и закрепляем его
+                sent_message = bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    parse_mode="Markdown",
+                )
+                bot.pin_chat_message(
+                    chat_id=chat_id,
+                    message_id=sent_message.message_id,
+                )
+                logger.info(f"Новое сообщение в чате {chat_id} отправлено и закреплено.")
         except Exception as e:
             logger.error(f"Ошибка при обновлении сообщения в {chat_id}: {e}")
 
 if __name__ == "__main__":
+    logger.info("Бот запущен.")
     while True:
-        update_pinned_message()
+        try:
+            update_pinned_message()
+        except Exception as e:
+            logger.error(f"Ошибка в основном цикле: {e}")
         time.sleep(600)  # Обновление каждые 10 минут
