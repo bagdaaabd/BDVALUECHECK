@@ -68,3 +68,16 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+import flask
+
+app = flask.Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running"
+
+if __name__ == "__main__":
+    import threading
+    server = threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000))
+    server.start()
+    asyncio.run(main())
