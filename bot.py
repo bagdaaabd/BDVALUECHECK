@@ -63,3 +63,17 @@ if __name__ == "__main__":
     
     # Запускаем Flask (WSGI-сервер)
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    return {"ok": True}, 200  # Тестовый ответ для Telegram
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
