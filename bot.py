@@ -1,19 +1,19 @@
 import os
 import logging
-import threading
-import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-TOKEN = os.getenv("8034613028:AAFf9SsJF5P1xgvPTO7vlltUKs8CEP7bToo")
+# Загружаем токен из переменных окружения
+TOKEN = os.getenv("TOKEN")
+if not TOKEN:
+    raise ValueError("TOKEN не найден! Убедитесь, что он добавлен в переменные окружения.")
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
-)
+# Логирование
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Создаем приложение Telegram Bot
+# Создаём Telegram Bot
 application = Application.builder().token(TOKEN).build()
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -21,26 +21,25 @@ async def start(update: Update, context: CallbackContext) -> None:
 
 application.add_handler(CommandHandler("start", start))
 
-def run_bot():
-    # Запускаем polling в главном потоке
-    application.run_polling()
-
-# Flask-сервер
+# Flask-сервер для webhook
 app = Flask(__name__)
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    asyncio.run(application.process_update(update))
-    return "ok"
-
-def run_flask():
-    app.run(host="0.0.0.0", port=10000, use_reloader=False)
+    application.create_task(application.process_update(update))
+    return "ok", 200
 
 if __name__ == "__main__":
-    # Запускаем Flask в отдельном потоке
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    
-    # Запускаем бота в главном потоке
-    run_bot()
+    # Указываем Telegram API использовать webhook
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Добавь в Render переменную WEBHOOK_URL со своим URL
+    if not WEBHOOK_URL:
+        raise ValueError("WEBHOOK_URL не указан! Добавьте его в переменные окружения.")
+
+    async def set_webhook():
+        await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
+
+    application.run_task(set_webhook())
+
+    # Запускаем Flask
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
