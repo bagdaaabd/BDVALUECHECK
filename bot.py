@@ -66,10 +66,6 @@ async def update_pinned_message():
         message_text += f"Ξ ETH/USD: {crypto.get('ethereum', {}).get('usd', 'N/A')}\n"
         message_text += f"🪙 USDT/USD: {crypto.get('tether', {}).get('usd', 'N/A')}\n"
         message_text += f"🔷 BNB/USD: {crypto.get('binancecoin', {}).get('usd', 'N/A')}\n"
-        message_text += f"🔶 ADA/USD: {crypto.get('cardano', {}).get('usd', 'N/A')}\n"
-        message_text += f"🌀 SOL/USD: {crypto.get('solana', {}).get('usd', 'N/A')}\n"
-        message_text += f"🎯 DOT/USD: {crypto.get('polkadot', {}).get('usd', 'N/A')}\n"
-        message_text += f"📀 TRX/USD: {crypto.get('tron', {}).get('usd', 'N/A')}\n"
 
         for chat_id in CHAT_IDS:
             try:
@@ -92,6 +88,16 @@ async def start(update: Update, context: CallbackContext):
     """Обработчик команды /start"""
     await update.message.reply_text("Привет! Я бот для отслеживания курсов валют и криптовалют.")
 
+def run_flask():
+    """Запускает Flask сервер"""
+    port = int(os.environ.get("PORT", 5000))  # Используем порт от Render
+    app.run(host="0.0.0.0", port=port, debug=False)
+
+@app.route('/', methods=['GET'])
+def home():
+    """Простой маршрут для проверки работы"""
+    return "Bot is running and ready!", 200
+
 async def main():
     """Главная асинхронная функция"""
     application = Application.builder().token(TELEGRAM_TOKEN).build()
@@ -102,21 +108,10 @@ async def main():
 
     # Запускаем обновление сообщений и polling параллельно
     asyncio.create_task(update_pinned_message())
+    
     await application.run_polling()
 
-def run_flask():
-    """Запускает Flask сервер"""
-    app.run(host="0.0.0.0", port=5000, debug=False)
-
-@app.route('/', methods=['GET'])
-def home():
-    """Простой маршрут для проверки работы"""
-    return "Bot is running and ready!", 200
-
 if __name__ == "__main__":
-    try:
-        asyncio.get_event_loop().run_until_complete(main())
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(main())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(main())
