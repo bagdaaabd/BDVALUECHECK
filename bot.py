@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 application = Application.builder().token(TOKEN).build()
 
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text('Бот запущен!')
+    try:
+        await update.message.reply_text('Бот запущен!')
+    except Exception as e:
+        logger.error(f"Ошибка в start(): {e}")
 
 application.add_handler(CommandHandler("start", start))
 
@@ -40,19 +43,21 @@ def home():
 def webhook():
     json_update = request.get_json()
     logger.info(f"Получено обновление: {json_update}")
-    
+
     update = Update.de_json(json_update, application.bot)
-    asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
-    
+    future = asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
+    future.result()  # Ждём завершения обработки
+
     return "ok", 200
 
-# Глобальный event loop для обработки запросов Telegram
+# Глобальный event loop для Telegram
 event_loop = asyncio.new_event_loop()
 
 def start_loop(loop: asyncio.AbstractEventLoop):
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
+# Запуск event loop в отдельном потоке
 threading.Thread(target=start_loop, args=(event_loop,), daemon=True).start()
 
 async def main_setup():
@@ -61,7 +66,7 @@ async def main_setup():
     logger.info("Webhook установлен!")
 
 if __name__ == "__main__":
-    # Теперь main_setup() вызывается корректно
-    asyncio.run(main_setup())  # <-- исправлено!
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main_setup())
 
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
