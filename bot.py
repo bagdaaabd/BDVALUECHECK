@@ -36,7 +36,7 @@ async def update_pinned_message():
         return usd_kzt, eur_kzt
     except Exception as e:
         logger.error(f"Ошибка при получении курсов валют: {e}")
-        return "N/A", "N
+        return "N/A", "N"
             try:
                 chat = await bot.get_chat(chat_id)
                 pinned_msg = chat.pinned_message
