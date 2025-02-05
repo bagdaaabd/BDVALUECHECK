@@ -33,13 +33,14 @@ app = Flask(__name__)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(), application.bot)
-    application.create_task(application.process_update(update))
+    # Вместо application.create_task(...) используем asyncio.run
+    asyncio.run(application.process_update(update))
     return "ok", 200
 
 if __name__ == "__main__":
-    # Выводим переменные в логах для отладки
-    print(f"TOKEN: {'OK' if TOKEN else 'NOT FOUND'}")  
-    print(f"WEBHOOK_URL: {WEBHOOK_URL}")  
+    # Выводим переменные для отладки
+    print(f"TOKEN: {'OK' if TOKEN else 'NOT FOUND'}")
+    print(f"WEBHOOK_URL: {WEBHOOK_URL}")
 
     # Устанавливаем webhook перед запуском сервера
     async def set_webhook():
