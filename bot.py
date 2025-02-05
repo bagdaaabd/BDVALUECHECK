@@ -1,97 +1,98 @@
-import logging
-import asyncio
 import os
-import httpx
-from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
+import logging
+import requests
+import asyncio
+from telegram import Bot
+from telegram.ext import Application, CommandHandler, ContextTypes
+from dotenv import load_dotenv
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Загружаем переменные окружения
+load_dotenv()
 
-# Переменные окружения (лучше использовать вместо открытого API-ключа)
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")  # Токен бота
-API_KEY = os.getenv("EXCHANGE_RATE_API_KEY")  # API-ключ для валют
-CHAT_IDS = ["-1002174956701", "-1002291124169"]  # ID групп
+TOKEN = os.getenv("BOT_TOKEN")
+API_KEY = os.getenv("EXCHANGE_API_KEY")
+CHAT_IDS = [-1002174956701, -1002291124169]
 
-# URL для получения курсов
-CURRENCY_API_URL = f"https://v6.exchangerate-api.com/v6/{API_KEY}/latest/USD"
-CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+if not TOKEN or not API_KEY:
+    raise ValueError("Ошибка: Токен бота или API-ключ не найдены. Проверьте переменные окружения!")
 
-# Функция получения курсов валют
-async def get_currency_data():
-    usd_kzt, eur_kzt, btc_usd, eth_usd = "Ошибка", "Ошибка", "Ошибка", "Ошибка"
+# Логирование
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(CURRENCY_API_URL, timeout=10)
-            crypto_response = await client.get(CRYPTO_API_URL, timeout=10)
+app = Application.builder().token(TOKEN).build()
 
-            if response.status_code == 200:
-                data = response.json()
-                usd_kzt = round(data["conversion_rates"].get("KZT", 0), 2)
-                eur_usd = data["conversion_rates"].get("EUR", 0)
-                eur_kzt = round(usd_kzt * eur_usd, 2)
-            else:
-                logger.error(f"Ошибка API валют: {response.status_code}")
+# Функция получения курса валют
+def get_exchange_rates():
+    url = f"https://api.exchangerate-api.com/v4/latest/USD?apikey={API_KEY}"
+    try:
+        response = requests.get(url)
+        data = response.json()
+        usd_kzt = data["rates"]["KZT"]
+        eur_kzt = data["rates"]["KZT"] / data["rates"]["EUR"]
+    except Exception as e:
+        logging.error(f"Ошибка получения курса валют: {e}")
+        usd_kzt, eur_kzt = "Ошибка", "Ошибка"
 
-            if crypto_response.status_code == 200:
-                crypto_data = crypto_response.json()
-                btc_usd = round(crypto_data.get("bitcoin", {}).get("usd", 0), 2)
-                eth_usd = round(crypto_data.get("ethereum", {}).get("usd", 0), 2)
-            else:
-                logger.error(f"Ошибка API криптовалют: {crypto_response.status_code}")
+    return usd_kzt, eur_kzt
 
-        except Exception as e:
-            logger.error(f"Ошибка при получении данных: {e}")
+# Функция получения курса криптовалют
+def get_crypto_rates():
+    url = f"https://api.cryptonator.com/api/ticker/btc-usd"
+    try:
+        response = requests.get(url)
+        btc_usd = response.json()["ticker"]["price"]
+    except Exception as e:
+        logging.error(f"Ошибка получения курса BTC/USD: {e}")
+        btc_usd = "Ошибка"
 
-    return usd_kzt, eur_kzt, btc_usd, eth_usd
+    url = f"https://api.cryptonator.com/api/ticker/eth-usd"
+    try:
+        response = requests.get(url)
+        eth_usd = response.json()["ticker"]["price"]
+    except Exception as e:
+        logging.error(f"Ошибка получения курса ETH/USD: {e}")
+        eth_usd = "Ошибка"
 
-# Функция форматирования сообщения
-def format_message(usd_kzt, eur_kzt, btc_usd, eth_usd):
-    return (
-        f"📢 Актуальные курсы валют и криптовалют:\n\n"
-        f"💵 USD/KZT: {usd_kzt} ₸\n"
-        f"💶 EUR/KZT: {eur_kzt} ₸\n\n"
-        f"🌐 Криптовалюты:\n"
-        f"₿ BTC/USD: {btc_usd} $\n"
-        f"⚡ ETH/USD: {eth_usd} $\n\n"
-        f"🔄 Обновлено автоматически каждые 10 минут"
+    return btc_usd, eth_usd
+
+# Обновление закрепленного сообщения
+async def update_pinned_message(context: ContextTypes.DEFAULT_TYPE):
+    usd_kzt, eur_kzt = get_exchange_rates()
+    btc_usd, eth_usd = get_crypto_rates()
+
+    message = (
+        f"📊 *Курсы валют и криптовалют*:\n"
+        f"🇺🇸 1 USD = {usd_kzt} KZT\n"
+        f"🇪🇺 1 EUR = {eur_kzt} KZT\n"
+        f"🟠 1 BTC = {btc_usd} USD\n"
+        f"🔵 1 ETH = {eth_usd} USD\n"
     )
 
-# Отправка или обновление закрепленного сообщения в группах
-async def update_pinned_message(app: Application):
+    for chat_id in CHAT_IDS:
+        try:
+            bot = context.bot
+            pinned_messages = await bot.get_chat(chat_id)
+            if pinned_messages.pinned_message:
+                await bot.edit_message_text(chat_id=chat_id, message_id=pinned_messages.pinned_message.message_id, text=message, parse_mode="Markdown")
+            else:
+                sent_message = await bot.send_message(chat_id, text=message, parse_mode="Markdown")
+                await bot.pin_chat_message(chat_id, sent_message.message_id)
+        except Exception as e:
+            logging.error(f"Ошибка обновления закрепленного сообщения в чате {chat_id}: {e}")
+
+# Команда /start
+async def start(update, context):
+    await update.message.reply_text("Привет! Я бот для обновления курса валют.")
+
+app.add_handler(CommandHandler("start", start))
+
+# Запускаем задачу автообновления сообщений
+async def periodic_update():
     while True:
-        usd_kzt, eur_kzt, btc_usd, eth_usd = await get_currency_data()
-        message_text = format_message(usd_kzt, eur_kzt, btc_usd, eth_usd)
-        
-        for chat_id in CHAT_IDS:
-            try:
-                sent_message = await app.bot.send_message(chat_id, text=message_text)
-                await app.bot.pin_chat_message(chat_id, sent_message.message_id)
-                logger.info(f"Сообщение закреплено в чате {chat_id}")
-            except Exception as e:
-                logger.error(f"Ошибка при отправке в чат {chat_id}: {e}")
-
-        await asyncio.sleep(600)  # Ждем 10 минут
-
-# Команда /rate
-async def rate(update: Update, context: CallbackContext) -> None:
-    usd_kzt, eur_kzt, btc_usd, eth_usd = await get_currency_data()
-    message_text = format_message(usd_kzt, eur_kzt, btc_usd, eth_usd)
-    await update.message.reply_text(message_text)
-
-# Основная функция
-async def main():
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("rate", rate))
-
-    # Запуск фонового обновления сообщений
-    loop = asyncio.get_event_loop()
-    loop.create_task(update_pinned_message(app))
-
-    logger.info("✅ Бот запущен!")
-    app.run_polling()
+        await update_pinned_message(ContextTypes.DEFAULT_TYPE)
+        await asyncio.sleep(600)  # 10 минут
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    print("Бот запущен...")
+    app.run_polling()
+    asyncio.run(periodic_update())
