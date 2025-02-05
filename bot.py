@@ -5,7 +5,7 @@ from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-TOKEN = os.getenv("BOT_TOKEN")  # Получаем токен из переменной окружения
+TOKEN = "В8034613028:AAFf9SsJF5P1xgvPTO7vlltUKs8CEP7bToo"
 
 # Создаём Flask-сервер
 app = Flask(__name__)
