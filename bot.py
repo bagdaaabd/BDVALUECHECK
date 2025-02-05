@@ -1,36 +1,46 @@
 import os
-import asyncio
+import logging
 import threading
-from flask import Flask
+import asyncio
+from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-TOKEN = "В8034613028:AAFf9SsJF5P1xgvPTO7vlltUKs8CEP7bToo"
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-# Создаём Flask-сервер
-app = Flask(__name__)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-@app.route('/')
-def home():
-    return "Бот работает!"
-
-# Функция для обработки команды /start
-async def start(update: Update, context: CallbackContext):
-    await update.message.reply_text("Привет! Я бот для проверки курсов валют.")
-
-# Создаём бота
+# Создаем приложение Telegram Bot
 application = Application.builder().token(TOKEN).build()
+
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Бот запущен!')
+
 application.add_handler(CommandHandler("start", start))
 
-# Функция для запуска бота в отдельном потоке
 def run_bot():
-    loop = asyncio.new_event_loop()  # Создаём новый event loop
-    asyncio.set_event_loop(loop)  # Устанавливаем его как текущий
-    loop.run_until_complete(application.run_polling())  # Запускаем бота
+    # Запускаем polling в главном потоке
+    application.run_polling()
 
-# Запускаем бота в отдельном потоке
-threading.Thread(target=run_bot, daemon=True).start()
+# Flask-сервер
+app = Flask(__name__)
 
-# Запускаем Flask-сервер
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(), application.bot)
+    asyncio.run(application.process_update(update))
+    return "ok"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=10000, use_reloader=False)
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
+    # Запускаем Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    
+    # Запускаем бота в главном потоке
+    run_bot()
