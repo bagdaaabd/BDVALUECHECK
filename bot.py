@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 
 def get_exchange_rates():
+    """ Получает курсы валют и возвращает USD/KZT и EUR/KZT """
     try:
         response = requests.get(API_URL, timeout=10)
         response.raise_for_status()
@@ -25,18 +26,22 @@ def get_exchange_rates():
         
         if not data or 'rates' not in data:
             raise ValueError("Некорректный ответ API")
+        
+        usd_kzt = data['rates'].get('KZT', 'N/A')
+        eur_kzt = data['rates'].get('EUR', 'N/A')
+        return usd_kzt, eur_kzt
+    
+    except Exception as e:
+        logger.error(f"Ошибка при получении курсов валют: {e}")
+        return "N/A", "N/A"
+
 async def update_pinned_message():
+    """ Обновляет закрепленное сообщение с актуальными курсами валют """
     while True:
         usd_kzt, eur_kzt = get_exchange_rates()
         message_text = f"Актуальные курсы:\nUSD/KZT: {usd_kzt}\nEUR/KZT: {eur_kzt}"
         
         for chat_id in CHAT_IDS:
-        usd_kzt = data['rates'].get('KZT', 'N/A')
-        eur_kzt = data['rates'].get('EUR', 'N/A')
-        return usd_kzt, eur_kzt
-    except Exception as e:
-        logger.error(f"Ошибка при получении курсов валют: {e}")
-        return "N/A", "N"
             try:
                 chat = await bot.get_chat(chat_id)
                 pinned_msg = chat.pinned_message
