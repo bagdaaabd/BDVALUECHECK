@@ -6,7 +6,7 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOKEN = os.getenv("8034613028:AAFf9SsJF5P1xgvPTO7vlltUKs8CEP7bToo")
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
