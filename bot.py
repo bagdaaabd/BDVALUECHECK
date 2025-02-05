@@ -22,18 +22,17 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=TELEGRAM_TOKEN)
 app = Flask(__name__)
 
-async def get_exchange_rates():
+def get_exchange_rates():
     """Получает курсы мировых валют."""
     try:
         response = requests.get(EXCHANGE_API_URL, timeout=10)
         response.raise_for_status()
-        data = response.json()
-        return data["rates"]
+        return response.json().get("rates", {})
     except Exception as e:
         logger.error(f"Ошибка при получении курсов валют: {e}")
         return {}
 
-async def get_crypto_prices():
+def get_crypto_prices():
     """Получает цены основных криптовалют."""
     try:
         response = requests.get(CRYPTO_API_URL, timeout=10)
@@ -46,15 +45,21 @@ async def get_crypto_prices():
 async def update_pinned_message():
     """Обновляет закрепленное сообщение с актуальными курсами."""
     while True:
-        rates = await get_exchange_rates()
-        crypto = await get_crypto_prices()
+        rates = get_exchange_rates()
+        crypto = get_crypto_prices()
 
-        message_text = f"💰 Актуальные курсы:\n"
-        message_text += f"🇺🇸 USD/KZT: {rates.get('KZT', 'N/A')}\n"
-        message_text += f"🇪🇺 EUR/KZT: {rates.get('KZT', 'N/A') * rates.get('EUR', 'N/A') if 'KZT' in rates and 'EUR' in rates else 'N/A'}\n"
-        message_text += f"₿ BTC/USD: {crypto.get('bitcoin', {}).get('usd', 'N/A')}\n"
-        message_text += f"Ξ ETH/USD: {crypto.get('ethereum', {}).get('usd', 'N/A')}\n"
-        message_text += f"🪙 USDT/USD: {crypto.get('tether', {}).get('usd', 'N/A')}\n"
+        usd_kzt = rates.get("KZT", "N/A")
+        eur_usd = rates.get("EUR", "N/A")
+        eur_kzt = usd_kzt * eur_usd if isinstance(usd_kzt, (int, float)) and isinstance(eur_usd, (int, float)) else "N/A"
+
+        message_text = (
+            f"💰 Актуальные курсы:\n"
+            f"🇺🇸 USD/KZT: {usd_kzt}\n"
+            f"🇪🇺 EUR/KZT: {eur_kzt}\n"
+            f"₿ BTC/USD: {crypto.get('bitcoin', {}).get('usd', 'N/A')}\n"
+            f"Ξ ETH/USD: {crypto.get('ethereum', {}).get('usd', 'N/A')}\n"
+            f"🪙 USDT/USD: {crypto.get('tether', {}).get('usd', 'N/A')}\n"
+        )
 
         for chat_id in CHAT_IDS:
             try:
@@ -81,14 +86,17 @@ async def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     threading.Thread(target=run_flask, daemon=True).start()
-    await update_pinned_message()
+    
+    update_task = asyncio.create_task(update_pinned_message())
     await application.run_polling()
+    await update_task
 
 def run_flask():
     app.run(host="0.0.0.0", port=5000, debug=False)
 
-if __name__ == "__main__":
-    asyncio.run(main())
 @app.route('/', methods=['GET'])
 def home():
     return "Bot is running and ready!", 200
+
+if __name__ == "__main__":
+    asyncio.run(main())
