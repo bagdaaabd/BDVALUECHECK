@@ -24,7 +24,15 @@ def run_bot():
 
     # Запускаем бота в режиме polling
     print("Бот запущен и работает...")
-    application.run_polling()
+   import threading
+import asyncio
+
+def run_bot():
+    loop = asyncio.new_event_loop()  # Создаём новый event loop
+    asyncio.set_event_loop(loop)  # Устанавливаем его как текущий
+    loop.run_until_complete(application.run_polling())  # Запускаем бота
+
+threading.Thread(target=run_bot, daemon=True).start()  # Запускаем в отдельном потоке
 
 # Запуск через event loop
 if __name__ == "__main__":
