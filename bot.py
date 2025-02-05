@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
@@ -8,6 +9,11 @@ from telegram.ext import Application, CommandHandler, CallbackContext
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise ValueError("TOKEN не найден! Убедитесь, что он добавлен в переменные окружения.")
+
+# Загружаем URL webhook из переменных окружения
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+if not WEBHOOK_URL:
+    raise ValueError("WEBHOOK_URL не указан! Добавьте его в переменные окружения.")
 
 # Логирование
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -31,15 +37,15 @@ def webhook():
     return "ok", 200
 
 if __name__ == "__main__":
-    # Указываем Telegram API использовать webhook
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Добавь в Render переменную WEBHOOK_URL со своим URL
-    if not WEBHOOK_URL:
-        raise ValueError("WEBHOOK_URL не указан! Добавьте его в переменные окружения.")
+    # Выводим переменные в логах для отладки
+    print(f"TOKEN: {'OK' if TOKEN else 'NOT FOUND'}")  
+    print(f"WEBHOOK_URL: {WEBHOOK_URL}")  
 
+    # Устанавливаем webhook перед запуском сервера
     async def set_webhook():
         await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
 
-    application.run_task(set_webhook())
+    asyncio.run(set_webhook())
 
     # Запускаем Flask
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
