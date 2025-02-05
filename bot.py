@@ -60,8 +60,8 @@ async def main_setup():
     await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
     logger.info("Webhook установлен!")
 
-# Запуск main_setup() без блокировки event loop
-asyncio.create_task(main_setup())  # <-- исправлено!
-
 if __name__ == "__main__":
+    # Теперь main_setup() вызывается корректно
+    asyncio.run(main_setup())  # <-- исправлено!
+
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
