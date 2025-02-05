@@ -89,3 +89,6 @@ def run_flask():
 
 if __name__ == "__main__":
     asyncio.run(main())
+@app.route('/', methods=['GET'])
+def home():
+    return "Bot is running and ready!", 200
