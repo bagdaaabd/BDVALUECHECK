@@ -7,15 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ"  # Вставь свой токен вручную
 CHAT_IDS = os.getenv("CHAT_IDS").split(',')  # Список ID чатов через запятую
 API_URL = "https://api.exchangerate-api.com/v4/latest/USD"
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+print(f"TELEGRAM_TOKEN из .env: {TELEGRAM_TOKEN}")
 bot = Bot(token=TELEGRAM_TOKEN)
-
 def get_exchange_rates():
     """ Получает курсы валют и возвращает USD/KZT и EUR/KZT """
     try:
