@@ -3,3 +3,5 @@ requests
 python-telegram-bot==20.8
 python-dotenv
 uvicorn
+daphne
+httpx
