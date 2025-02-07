@@ -85,7 +85,7 @@ def webhook():
     logger.info(f"📩 Получено обновление: {json_update}")
     
     update = Update.de_json(json_update, application.bot)
-    asyncio.run(application.process_update(update))
+    application.process_update(update)
     
     return "ok", 200
 
@@ -105,10 +105,11 @@ async def main():
     await application.initialize()
     await set_webhook()
     asyncio.create_task(periodic_update())  # Запускаем периодическое обновление
-    await application.start()
+    await application.start_polling()
 
 if __name__ == "__main__":
+    # Запуск Telegram бота в асинхронном режиме
+    asyncio.run(main())
+
     # Запуск Flask через Uvicorn с ASGI
     uvicorn.run(app, host="0.0.0.0", port=PORT)
-    # Запуск Telegram бота
-    asyncio.run(main())
