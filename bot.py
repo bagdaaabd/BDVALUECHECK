@@ -49,10 +49,21 @@ async def set_webhook():
     await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
     logger.info(f"✅ Webhook установлен: {WEBHOOK_URL}/webhook")
 
+async def send_startup_message():
+    """Отправка тестового сообщения в группы при запуске"""
+    chat_ids = [-1002291124169, -1002174956701]
+    for chat_id in chat_ids:
+        try:
+            await application.bot.send_message(chat_id=chat_id, text="🚀 Бот запущен и работает!")
+            logger.info(f"📤 Сообщение отправлено в группу {chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки в {chat_id}: {e}")
+
 async def main():
     await application.initialize()
     await set_webhook()
     await application.start()
+    await send_startup_message()  # Отправляем тестовое сообщение в группы
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
