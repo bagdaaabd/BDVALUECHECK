@@ -5,7 +5,6 @@ import httpx
 from flask import Flask, request
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
-import uvicorn  # Используем uvicorn для ASGI сервера
 
 # Настройки
 TOKEN = os.getenv("TOKEN")
@@ -14,7 +13,7 @@ PORT = int(os.getenv("PORT", 10000))
 CHAT_IDS = [-1002291124169, -1002174956701]  # ID групп
 
 if not TOKEN:
-    raise ValueError("❌ TOKEN не найден! Убедитесь, что он добавлен в переменные окружения.")
+    raise ValueError("❌ TOKEN не найден! Добавьте его в переменные окружения.")
 if not WEBHOOK_URL:
     raise ValueError("❌ WEBHOOK_URL не указан! Добавьте его в переменные окружения.")
 
@@ -35,20 +34,21 @@ async def fetch_rates():
     async with httpx.AsyncClient() as client:
         currency_response = await client.get(CURRENCY_API_URL)
         crypto_response = await client.get(CRYPTO_API_URL)
-    
+
     if currency_response.status_code == 200 and crypto_response.status_code == 200:
         currency_data = currency_response.json()
         crypto_data = crypto_response.json()
-        
+
         usd_kzt = currency_data["quotes"].get("USDKZT", "N/A")
         eur_usd = currency_data["quotes"].get("USDEUR", 1)
         eur_kzt = usd_kzt / eur_usd if eur_usd != 0 else "N/A"
         btc_usd = crypto_data["bitcoin"]["usd"]
         eth_usd = crypto_data["ethereum"]["usd"]
-        
+
+        # Логирование курсов
         logger.info(f"📊 Курс валют: {currency_data}")
         logger.info(f"🪙 Курс криптовалют: {crypto_data}")
-        
+
         return (f"💰 *Актуальные курсы валют и криптовалют:*\n\n"
                 f"🇺🇸 1 USD = {usd_kzt:.2f} KZT\n"
                 f"🇪🇺 1 EUR = {eur_kzt:.2f} KZT\n"
@@ -82,8 +82,10 @@ def home():
 def webhook():
     json_update = request.get_json()
     logger.info(f"📩 Получено обновление: {json_update}")
+
     update = Update.de_json(json_update, application.bot)
-    application.process_update(update)
+    asyncio.create_task(application.process_update(update))
+
     return "ok", 200
 
 # Устанавливаем Webhook
@@ -101,10 +103,13 @@ async def periodic_update():
 async def main():
     await application.initialize()
     await set_webhook()
-    asyncio.create_task(periodic_update())  # Запускаем обновление курсов в фоне
-    await application.start()  # Запускаем обработку вебхуков
+    asyncio.create_task(periodic_update())  # Запускаем периодическое обновление
+    await application.start()  # Запуск бота
 
 if __name__ == "__main__":
+    # Запускаем все асинхронные задачи в фоне
     loop = asyncio.get_event_loop()
-    loop.create_task(main())  # Запускаем бота в фоне
-    uvicorn.run(app, host="0.0.0.0", port=PORT)  # Запускаем Flask через Uvicorn
+    loop.create_task(main())
+    
+    # Запуск Flask через gunicorn (WSGI)
+    app.run(host="0.0.0.0", port=PORT)
