@@ -17,7 +17,7 @@ last_message_id = None
 
 # Функция для получения курса USD/KZT
 def get_usd_kzt():
-    url = "https://api.exchangerate-api.com/v4/latest/USD"  # Замени на реальный API
+    url = "SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"  # Замени на реальный API
     response = requests.get(url)
     data = response.json()
     rate = data['rates']['KZT']
