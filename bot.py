@@ -108,7 +108,7 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
-    # Запускаем Flask через Uvicorn в асинхронном режиме
-    asyncio.run(uvicorn.run(app, host="0.0.0.0", port=PORT))
-    # Запускаем Telegram бота
+    # Запуск Flask через Uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    # Запуск Telegram бота
     asyncio.run(main())
