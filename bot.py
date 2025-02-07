@@ -46,7 +46,6 @@ async def fetch_rates():
         btc_usd = crypto_data["bitcoin"]["usd"]
         eth_usd = crypto_data["ethereum"]["usd"]
         
-        # Логирование курсов
         logger.info(f"📊 Курс валют: {currency_data}")
         logger.info(f"🪙 Курс криптовалют: {crypto_data}")
         
@@ -83,10 +82,8 @@ def home():
 def webhook():
     json_update = request.get_json()
     logger.info(f"📩 Получено обновление: {json_update}")
-    
     update = Update.de_json(json_update, application.bot)
     application.process_update(update)
-    
     return "ok", 200
 
 # Устанавливаем Webhook
@@ -104,11 +101,10 @@ async def periodic_update():
 async def main():
     await application.initialize()
     await set_webhook()
-    asyncio.create_task(periodic_update())  # Запускаем периодическое обновление
-   await application.run_polling()
-if __name__ == "__main__":
-    # Запуск Telegram бота в асинхронном режиме
-    asyncio.run(main())
+    asyncio.create_task(periodic_update())  # Запускаем обновление курсов в фоне
+    await application.start()  # Запускаем обработку вебхуков
 
-    # Запуск Flask через Uvicorn с ASGI
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.create_task(main())  # Запускаем бота в фоне
+    uvicorn.run(app, host="0.0.0.0", port=PORT)  # Запускаем Flask через Uvicorn
