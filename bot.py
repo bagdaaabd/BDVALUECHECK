@@ -107,6 +107,7 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
+    # Создаем отдельный поток для Flask сервера
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    app.run(host="0.0.0.0", port=PORT, use_reloader=False)
+    loop.create_task(app.run_task(host="0.0.0.0", port=PORT))  # Запуск Flask в асинхронном режиме
+    loop.run_until_complete(main())  # Запуск асинхронных задач Telegram бота
