@@ -2,5 +2,5 @@ Flask
 requests
 python-telegram-bot==20.8
 python-dotenv
-uvicorn
 httpx
+gunicorn
