@@ -2,7 +2,7 @@ import os
 import logging
 import asyncio
 import httpx
-from flask import Flask, request
+from quart import Quart, request
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
 
@@ -71,20 +71,20 @@ async def start(update: Update, context):
 
 application.add_handler(CommandHandler("start", start))
 
-# Flask-сервер
-app = Flask(__name__)
+# Quart-сервер
+app = Quart(__name__)
 
 @app.route("/")
-def home():
+async def home():
     return "🤖 Bot is running!", 200
 
 @app.route("/webhook", methods=["POST"])
-def webhook():
-    json_update = request.get_json()
+async def webhook():
+    json_update = await request.get_json()
     logger.info(f"📩 Получено обновление: {json_update}")
 
     update = Update.de_json(json_update, application.bot)
-    asyncio.create_task(application.process_update(update))
+    await application.process_update(update)
 
     return "ok", 200
 
@@ -107,9 +107,9 @@ async def main():
     await application.start()  # Запуск бота
 
 if __name__ == "__main__":
-    # Запускаем все асинхронные задачи в фоне
+    # Запускаем все асинхронные задачи
     loop = asyncio.get_event_loop()
     loop.create_task(main())
-    
-    # Запуск Flask через gunicorn (WSGI)
+
+    # Запуск Quart
     app.run(host="0.0.0.0", port=PORT)
