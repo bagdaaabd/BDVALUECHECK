@@ -37,15 +37,25 @@ app = Flask(__name__)
 def home():
     return "Bot is running!", 200
 
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def webhook():
-    json_update = request.get_json()
-    logger.info(f"Получено обновление: {json_update}")
+    try:
+        json_update = request.get_json()
+        logger.info(f"Получено обновление: {json_update}")
 
-    update = Update.de_json(json_update, application.bot)
-    asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
+        if not json_update:
+            return "No update data", 400  # Ошибка, если JSON пустой
 
-    return "ok", 200
+        update = Update.de_json(json_update, application.bot)
+        future = asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
+        future.result()  # Ждём завершения обработки
+
+        return "ok", 200
+
+    except Exception as e:
+        logger.error(f"Ошибка в webhook: {e}")
+        return "Internal Server Error", 500
+
 
 # Глобальный event loop для Telegram
 event_loop = asyncio.new_event_loop()
