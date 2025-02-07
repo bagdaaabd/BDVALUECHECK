@@ -11,6 +11,7 @@ TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 CHAT_IDS = [-1002291124169, -1002174956701]  # ID групп
+API_KEY = "SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"
 
 if not TOKEN:
     raise ValueError("❌ TOKEN не найден! Убедитесь, что он добавлен в переменные окружения.")
@@ -25,26 +26,27 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=TOKEN)
 application = Application.builder().token(TOKEN).build()
 
-# API для курсов валют и криптовалют
-APILAYER_API_KEY = "SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"
-CURRENCY_API_URL = f"https://api.apilayer.com/currency_data/live?source=USD&currencies=KZT,EUR"
+# API для курсов валют
+CURRENCY_API_URL = f"https://api.apilayer.com/currency_data/live?source=USD&currencies=KZT,EUR&apikey={API_KEY}"
 CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
 
 async def fetch_rates():
     async with httpx.AsyncClient() as client:
-        currency_response = await client.get(CURRENCY_API_URL, headers={"apikey": APILAYER_API_KEY})
+        currency_response = await client.get(CURRENCY_API_URL)
         crypto_response = await client.get(CRYPTO_API_URL)
-
+    
     if currency_response.status_code == 200 and crypto_response.status_code == 200:
         currency_data = currency_response.json()
         crypto_data = crypto_response.json()
         
         usd_kzt = currency_data["quotes"].get("USDKZT", "N/A")
-        eur_kzt = currency_data["quotes"].get("USDKZT", 1) / currency_data["quotes"].get("USDEUR", 1)
+        usd_eur = currency_data["quotes"].get("USDEUR", "N/A")
+        eur_kzt = usd_kzt / usd_eur if usd_eur else "N/A"
         btc_usd = crypto_data["bitcoin"]["usd"]
         eth_usd = crypto_data["ethereum"]["usd"]
-
-        return f"💰 *Актуальные курсы валют и криптовалют:*\n\n" \
+        
+        return f"💰 *Актуальные курсы валют и криптовалют:*
+\n" \
                f"🇺🇸 1 USD = {usd_kzt:.2f} KZT\n" \
                f"🇪🇺 1 EUR = {eur_kzt:.2f} KZT\n" \
                f"🟠 1 BTC = ${btc_usd:.2f}\n" \
@@ -53,13 +55,11 @@ async def fetch_rates():
         return "⚠️ Ошибка получения данных о курсах."
 
 async def update_pinned_message():
-    while True:
-        text = await fetch_rates()
-        for chat_id in CHAT_IDS:
-            message = await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
-            await bot.pin_chat_message(chat_id=chat_id, message_id=message.message_id)
-            logger.info(f"📌 Закреплено новое сообщение в {chat_id}, ID: {message.message_id}")
-        await asyncio.sleep(600)  # Обновление каждые 10 минут
+    text = await fetch_rates()
+    for chat_id in CHAT_IDS:
+        message = await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+        await bot.pin_chat_message(chat_id=chat_id, message_id=message.message_id)
+        logger.info(f"📌 Закреплено новое сообщение в {chat_id}, ID: {message.message_id}")
 
 async def start(update: Update, context):
     await update.message.reply_text("✅ Бот запущен и работает!")
@@ -91,7 +91,7 @@ async def main():
     await application.initialize()
     await set_webhook()
     await application.start()
-    asyncio.create_task(update_pinned_message())  # Запускаем цикл обновления
+    asyncio.create_task(update_pinned_message())  # Обновление сообщения при старте
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
