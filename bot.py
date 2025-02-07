@@ -105,8 +105,7 @@ async def main():
     await application.initialize()
     await set_webhook()
     asyncio.create_task(periodic_update())  # Запускаем периодическое обновление
-    await application.start_polling()
-
+   await application.run_polling()
 if __name__ == "__main__":
     # Запуск Telegram бота в асинхронном режиме
     asyncio.run(main())
