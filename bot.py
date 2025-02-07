@@ -29,6 +29,7 @@ application = Application.builder().token(TOKEN).build()
 CURRENCY_API_URL = "https://api.apilayer.com/currency_data/live?source=USD&currencies=KZT,EUR&apikey=SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"
 CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
 
+# Функция для получения курсов
 async def fetch_rates():
     async with httpx.AsyncClient() as client:
         currency_response = await client.get(CURRENCY_API_URL)
@@ -44,6 +45,10 @@ async def fetch_rates():
         btc_usd = crypto_data["bitcoin"]["usd"]
         eth_usd = crypto_data["ethereum"]["usd"]
         
+        # Логирование курсов
+        logger.info(f"📊 Курс валют: {currency_data}")
+        logger.info(f"🪙 Курс криптовалют: {crypto_data}")
+        
         return (f"💰 *Актуальные курсы валют и криптовалют:*\n\n"
                 f"🇺🇸 1 USD = {usd_kzt:.2f} KZT\n"
                 f"🇪🇺 1 EUR = {eur_kzt:.2f} KZT\n"
@@ -52,6 +57,7 @@ async def fetch_rates():
     else:
         return "⚠️ Ошибка получения данных о курсах."
 
+# Функция для обновления закрепленного сообщения
 async def update_pinned_message():
     text = await fetch_rates()
     for chat_id in CHAT_IDS:
@@ -59,6 +65,7 @@ async def update_pinned_message():
         await bot.pin_chat_message(chat_id=chat_id, message_id=message.message_id)
         logger.info(f"📌 Закреплено новое сообщение в {chat_id}, ID: {message.message_id}")
 
+# Функция для старта бота
 async def start(update: Update, context):
     await update.message.reply_text("✅ Бот запущен и работает!")
 
@@ -81,15 +88,23 @@ def webhook():
     
     return "ok", 200
 
+# Устанавливаем Webhook
 async def set_webhook():
     await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
     logger.info(f"✅ Webhook установлен: {WEBHOOK_URL}/webhook")
 
+# Функция для периодического обновления
+async def periodic_update():
+    while True:
+        await update_pinned_message()
+        await asyncio.sleep(600)  # Каждые 10 минут
+
+# Основная функция
 async def main():
     await application.initialize()
     await set_webhook()
+    asyncio.create_task(periodic_update())  # Запускаем периодическое обновление
     await application.start()
-    asyncio.create_task(update_pinned_message())  # Обновление сообщения при старте
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
