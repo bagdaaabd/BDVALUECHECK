@@ -5,6 +5,7 @@ import httpx
 from flask import Flask, request
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
+from daphne import server  # Импортируем daphne для запуска через ASGI
 
 # Настройки
 TOKEN = os.getenv("TOKEN")
@@ -107,8 +108,7 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
-    # Запуск Flask через Daphne
-    from daphne import server
-    server.Application(app).run(host="0.0.0.0", port=PORT)
+    # Запуск Flask через Daphne с ASGI
+    server.run(app, host="0.0.0.0", port=PORT)
     # Запуск Telegram бота
     asyncio.run(main())
