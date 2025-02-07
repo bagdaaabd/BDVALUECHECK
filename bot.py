@@ -17,7 +17,8 @@ if not WEBHOOK_URL:
 
 # Логирование
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
@@ -25,28 +26,24 @@ logger = logging.getLogger(__name__)
 application = Application.builder().token(TOKEN).build()
 
 async def start(update: Update, context: CallbackContext) -> None:
-    try:
-        await update.message.reply_text('Бот запущен!')
-    except Exception as e:
-        logger.error(f"Ошибка в start(): {e}")
+    await update.message.reply_text("Бот запущен!")
 
 application.add_handler(CommandHandler("start", start))
 
 # Flask-сервер для webhook
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/")
 def home():
     return "Bot is running!", 200
 
-@app.route('/webhook', methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     json_update = request.get_json()
     logger.info(f"Получено обновление: {json_update}")
 
     update = Update.de_json(json_update, application.bot)
-    future = asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
-    future.result()  # Ждём завершения обработки
+    asyncio.run_coroutine_threadsafe(application.process_update(update), event_loop)
 
     return "ok", 200
 
@@ -65,8 +62,7 @@ async def main_setup():
     await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
     logger.info("Webhook установлен!")
 
+# Запуск бота
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main_setup())
-
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), use_reloader=False)
+    asyncio.run(main_setup())  # Запускаем асинхронную настройку корректно
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), use_reloader=False)
