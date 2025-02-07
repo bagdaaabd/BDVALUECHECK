@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import httpx
+import uvicorn
 from flask import Flask, request
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
@@ -107,7 +108,7 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
-    # Создаем отдельный поток для Flask сервера
-    loop = asyncio.get_event_loop()
-    loop.create_task(app.run_task(host="0.0.0.0", port=PORT))  # Запуск Flask в асинхронном режиме
-    loop.run_until_complete(main())  # Запуск асинхронных задач Telegram бота
+    # Запускаем Flask через Uvicorn в асинхронном режиме
+    asyncio.run(uvicorn.run(app, host="0.0.0.0", port=PORT))
+    # Запускаем Telegram бота
+    asyncio.run(main())
