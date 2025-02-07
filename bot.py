@@ -11,7 +11,6 @@ TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
 CHAT_IDS = [-1002291124169, -1002174956701]  # ID групп
-API_KEY = "SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"
 
 if not TOKEN:
     raise ValueError("❌ TOKEN не найден! Убедитесь, что он добавлен в переменные окружения.")
@@ -27,7 +26,7 @@ bot = Bot(token=TOKEN)
 application = Application.builder().token(TOKEN).build()
 
 # API для курсов валют
-CURRENCY_API_URL = f"https://api.apilayer.com/currency_data/live?source=USD&currencies=KZT,EUR&apikey={API_KEY}"
+CURRENCY_API_URL = "https://api.apilayer.com/currency_data/live?source=USD&currencies=KZT,EUR&apikey=SC86xx0kCQ90R0a9Wi7oGU4zvqmy4Qnq"
 CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
 
 async def fetch_rates():
@@ -40,17 +39,16 @@ async def fetch_rates():
         crypto_data = crypto_response.json()
         
         usd_kzt = currency_data["quotes"].get("USDKZT", "N/A")
-        usd_eur = currency_data["quotes"].get("USDEUR", "N/A")
-        eur_kzt = usd_kzt / usd_eur if usd_eur else "N/A"
+        eur_usd = currency_data["quotes"].get("USDEUR", 1)
+        eur_kzt = usd_kzt / eur_usd if eur_usd != 0 else "N/A"
         btc_usd = crypto_data["bitcoin"]["usd"]
         eth_usd = crypto_data["ethereum"]["usd"]
         
-        return f"💰 *Актуальные курсы валют и криптовалют:*
-\n" \
-               f"🇺🇸 1 USD = {usd_kzt:.2f} KZT\n" \
-               f"🇪🇺 1 EUR = {eur_kzt:.2f} KZT\n" \
-               f"🟠 1 BTC = ${btc_usd:.2f}\n" \
-               f"💎 1 ETH = ${eth_usd:.2f}"
+        return (f"💰 *Актуальные курсы валют и криптовалют:*\n\n"
+                f"🇺🇸 1 USD = {usd_kzt:.2f} KZT\n"
+                f"🇪🇺 1 EUR = {eur_kzt:.2f} KZT\n"
+                f"🟠 1 BTC = ${btc_usd:.2f}\n"
+                f"💎 1 ETH = ${eth_usd:.2f}")
     else:
         return "⚠️ Ошибка получения данных о курсах."
 
