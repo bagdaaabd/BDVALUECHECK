@@ -5,7 +5,7 @@ import httpx
 from flask import Flask, request
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
-from daphne import server  # Импортируем daphne для запуска через ASGI
+import uvicorn  # Используем uvicorn для ASGI сервера
 
 # Настройки
 TOKEN = os.getenv("TOKEN")
@@ -108,7 +108,7 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
-    # Запуск Flask через Daphne с ASGI
-    server.run(app, host="0.0.0.0", port=PORT)
+    # Запуск Flask через Uvicorn с ASGI
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
     # Запуск Telegram бота
     asyncio.run(main())
