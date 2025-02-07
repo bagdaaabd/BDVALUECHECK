@@ -34,20 +34,23 @@ def home():
     return "Bot is running!", 200
 
 @app.route("/webhook", methods=["POST"])
-async def webhook():
+def webhook():
     json_update = request.get_json()
     logger.info(f"Получено обновление: {json_update}")
 
     update = Update.de_json(json_update, application.bot)
-    await application.process_update(update)
+    asyncio.create_task(application.process_update(update))  # Запускаем обработку обновления асинхронно
 
     return "ok", 200
 
-async def main():
+async def setup_webhook():
+    """Асинхронная установка вебхука перед запуском сервера"""
     await application.initialize()
     await application.bot.set_webhook(WEBHOOK_URL + "/webhook")
     logger.info("Webhook установлен!")
 
+# Запуск Flask и Webhook
 if __name__ == "__main__":
-    asyncio.run(main())  # Асинхронный запуск бота
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(setup_webhook())  # Устанавливаем вебхук перед запуском Flask
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 10000)), use_reloader=False)
