@@ -4,6 +4,7 @@ import asyncio
 import httpx
 import uvicorn
 from flask import Flask, request
+from flask_asgi import ASGI
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler
 
@@ -108,7 +109,8 @@ async def main():
     await application.start()
 
 if __name__ == "__main__":
-    # Запуск Flask через Uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    # Запуск Flask через ASGI
+    asgi_app = ASGI(app)
+    uvicorn.run(asgi_app, host="0.0.0.0", port=PORT)
     # Запуск Telegram бота
     asyncio.run(main())
